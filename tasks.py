@@ -1,3 +1,6 @@
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+from statsmodels.datasets import macrodata
 import numpy as np
 
 # Follow the tasks below to practice basic Python concepts.
@@ -29,8 +32,9 @@ import numpy as np
 text = "The quick brown fox jumps over the lazy dog!"
 
 # Write a list comprehension to tokenize the text and remove punctuation
-tokens = [word.strip('.,!?;:()[]{}"\'') for word in text.split()]
-
+tokens = ''.join([token for token in text if
+                  token.isalpha() is True or token == ' '])
+tokens = [token for token in tokens.split()]
 # Expected output: ['The', 'quick', 'brown', 'fox', 'jumps', 'over', 'the', 'lazy', 'dog']
 print(tokens)
 # -----------------------------------------------
@@ -227,6 +231,7 @@ np.all(sigmoid(np.log([1, 1/3, 1/7])) == np.array([1/2, 1/4, 1/8]))
 # -----------------------------------------------
 
 
+
 ################  O P T I O N A L  ##############
 
 
@@ -239,10 +244,10 @@ np.all(sigmoid(np.log([1, 1/3, 1/7])) == np.array([1/2, 1/4, 1/8]))
 # o[t] = B a[t]
 #
 # All the multiplications here are matrix-vector multiplications (i.e., W, U and B
-# are matrices, and x[t] and a[t] are vectors). 
+# are matrices, and x[t] and a[t] are vectors).
 # To implement an RNN layer, these equations need to be implemented. The values
-# that define the matrices need to be passed to the layer. 
-# 
+# that define the matrices need to be passed to the layer.
+#
 
 # And implementation in R may look as follows:
 #
@@ -271,17 +276,17 @@ np.all(sigmoid(np.log([1, 1/3, 1/7])) == np.array([1/2, 1/4, 1/8]))
 # 	outputs
 # }
 
-# In this implementation 
+# In this implementation
 # w:                 is a single vector containing the flattened weights for the matrices  W ,  U , and  B .
-# list_of_sequences: is a list where each element is a sequence represented as a matrix ( X ), 
+# list_of_sequences: is a list where each element is a sequence represented as a matrix ( X ),
 #                    where rows are time steps and columns are input features.
 # sigma:             An optional activation function (default is the sigmoid function plogis).
 # 1. Setup: Splits the vector w into three matrices ( W, U, B ).
 #       and determines the number of sequences to process.
-# 2. Iterate Over Sequences: For each sequence in list_of_sequences 
+# 2. Iterate Over Sequences: For each sequence in list_of_sequences
 #      the sequence matrix  X is extracted and processed by
 #      • first initializing the hidden state  a  to zero (vector of the same size as a row of  X).
-#      • then, for each time step (each row in  X ) the hidden state  a[t] is updated using the RNN 
+#      • then, for each time step (each row in  X ) the hidden state  a[t] is updated using the RNN
 #        formula:  a[t] = W  x[t] + U a[t-1].
 # 4. Compute Output: After processing all time steps of the sequence, the output value is
 #      computed using final hidden state using the the equation o = B a[T] and is
@@ -289,42 +294,40 @@ np.all(sigmoid(np.log([1, 1/3, 1/7])) == np.array([1/2, 1/4, 1/8]))
 # The return value is the vector of RNN output values (one value for each sequence in list_of_sequences).
 
 
-
 # Task 10: Translate this function into Python (by hand!)
 
 # Your code here:
 # -----------------------------------------------
-def rnn_layer(w: np.array, list_of_sequences: list[np.array], sigma=sigmoid ) -> np.array:
-    W = np.reshape(w[:9], (3, 3))  # First 9 values as W (3x3 matrix)
-    U = np.reshape(w[9:18], (3, 3))  # Next 9 values as U (3x3 matrix)
-    B = np.reshape(w[18:], (1, 3))  # Remaining values as B (1x3 matrix)
+def rnn_layer(w: np.array,
+              list_of_sequences: list[np.array],
+              sigma=sigmoid) -> np.array:
+
+    W = w[0:9].reshape(3, 3)
+    U = w[9:18].reshape(3, 3)
+    B = w[18:21].reshape(1, 3)
 
     nr_sequences = len(list_of_sequences)
     outputs = np.zeros(nr_sequences)
+
     for i in range(nr_sequences):
-        # Get the i-th sequence
         X = list_of_sequences[i]
-        # Initialize hidden state to zero
-        a = np.zeros(X.shape[1])
+        a = 0 * X[1, ]
+        for j in range(len(X)):
+            a = np.matmul(W, X[j,]) + np.matmul(U, a)
 
-        # Iterate over the time points
-        for j in range(X.shape[0]):
-            a = np.dot(W, X[j]) + np.dot(U, a)  # RNN equation: a[t] = W x[t] + U a[t-1]
-
-        # Compute the output for this sequence
-        outputs[i] = np.dot(B, a)  # o[t] = B a[t]
+        outputs[i] = np.matmul(B, a)
 
     return outputs
 
+
 # Test
 np.random.seed(10)
-list_of_sequences = [np.random.normal(size=(5,3)) for _ in range(100)]
-wstart = np.random.normal(size=(3*3 + 3*3 + 3)) 
+list_of_sequences = [np.random.normal(size=(5, 3)) for _ in range(100)]
+wstart = np.random.normal(size=(3 * 3 + 3 * 3 + 3))
 o = rnn_layer(wstart, list_of_sequences)
-o.shape == (100,) and o.mean().round(3) == 16.287 and o.std().astype(int) == 133
+o.shape == (100,) and o.mean().round(
+    3) == 16.287 and o.std().astype(int) == 133
 # -----------------------------------------------
-
-
 
 
 # [F] Defining a loss function
@@ -342,25 +345,23 @@ o.shape == (100,) and o.mean().round(3) == 16.287 and o.std().astype(int) == 133
 # }
 
 
-
-
 # Task 11: translate the above loss function into Python
 
 # Your code here:
 # -----------------------------------------------
-def rnn_loss(w: np.array, list_of_sequences: list, y: np.array) -> np.float64:
+def rnn_loss(w: np.array,
+             list_of_sequences: list[np.array],
+             y: np.array) -> np.float64:
+
     pred = rnn_layer(w, list_of_sequences)
+    return np.sum((y - pred)**2)
 
-    loss = np.sum((y - pred) ** 2)
 
-    return loss
 # Test:
-y = np.array([(X @ np.arange(1,4))[0] for X in list_of_sequences])
+y = np.array([(X @ np.arange(1, 4))[0] for X in list_of_sequences])
 o = rnn_loss(wstart, list_of_sequences, y)
 o.size == 1 and o.round(3) == 17794.733
 # -----------------------------------------------
-
-
 
 
 # [G] Fitting the RNN with minimize for the scipy.optmize module
@@ -369,20 +370,22 @@ o.size == 1 and o.round(3) == 17794.733
 # The data that we will fit is a macroeconomics data set. We'll try to predict inflation ('infl')
 # from the consumer price index ('cpi') and unemployment rate ('unemp').
 # First, load the data set:
-from statsmodels.datasets import macrodata
 
 data = macrodata.load_pandas().data
-X = np.hstack([np.ones((len(data),1)), data[['cpi','unemp']].values]) # Features: CPI and unemployment
-y = data['infl'].values # Target: inflation
+# Features: CPI and unemployment
+X = np.hstack([np.ones((len(data), 1)), data[['cpi', 'unemp']].values])
+y = data['infl'].values  # Target: inflation
 
-# Next we want to prepare a dataset for training sequence-based models like RNNs. We create 
-# input-output pairs where each input is a sequence of seq_len time steps from X, and the output 
+# Next we want to prepare a dataset for training sequence-based models like RNNs. We create
+# input-output pairs where each input is a sequence of seq_len time steps from X, and the output
 # is the corresponding target value y at the next time step after the sequence.
 
-seq_len = 7 # Define the length of each input sequence (we choose 7 consecutive time steps).
+# Define the length of each input sequence (we choose 7 consecutive time steps).
+seq_len = 7
 
 # Create a list of tuples:
-data_pairs = [(X[i:i+seq_len], y[i+seq_len]) for i in range(len(X)-seq_len)]
+data_pairs = [(X[i:i + seq_len], y[i + seq_len])
+              for i in range(len(X) - seq_len)]
 # - First element: a slice of `X` of length `seq_len` (the input sequence).
 # - Second element: the target value `y` corresponding to the step after the sequence.
 # Example: If seq_len=4, for i=0, pair is (X[0:4], y[4]).
@@ -391,46 +394,44 @@ data_pairs = [(X[i:i+seq_len], y[i+seq_len]) for i in range(len(X)-seq_len)]
 
 list_of_sequences, yy = list(zip(*data_pairs))
 
-# Here, the zip(*...) is used for transposing a list of tuples. It splits the tuple pairs into 
+# Here, the zip(*...) is used for transposing a list of tuples. It splits the tuple pairs into
 # two separate lists:
 # First list: all input sequences (X[i:i+seq_len])
 # Second list: all target values (y[i+seq_len])
-# The * operator in Python unpacks the list elements into separate arguments for the zip() 
-# function. E.g., func(*[2,4,5]) is the same as func(2,4,5). 
+# The * operator in Python unpacks the list elements into separate arguments for the zip()
+# function. E.g., func(*[2,4,5]) is the same as func(2,4,5).
 
-# Now we are ready to fit the RNN to the data set. We need to load the optimization routine 
+# Now we are ready to fit the RNN to the data set. We need to load the optimization routine
 # 'minimize' from the scipy.optimize module
 
-from scipy.optimize import minimize
 
 # fit the RNN (this may take a minute)
 fit = minimize(rnn_loss, wstart, args=(list_of_sequences, yy), method='BFGS')
 print(fit)
 
-# The 'success' component in fit may be false, and this is due to a loss of computational 
-# precision. For now we'll just settle for the weights it has found so far. 
+# The 'success' component in fit may be false, and this is due to a loss of computational
+# precision. For now we'll just settle for the weights it has found so far.
 
 # To evaluate the fit we can compute the correlation between the values predicted by the
 # RNN and the true values
 pred = rnn_layer(fit['x'], list_of_sequences)
-np.corrcoef(pred,yy)
+np.corrcoef(pred, yy)
 
-# How good is this? To gage the performance of the RNN we'll compare it to a linear 
+# How good is this? To gage the performance of the RNN we'll compare it to a linear
 # regression with the same data
-Z = X[:len(yy)] # features corresponding to elements in yy at the previous time step
-linreg_coefs = np.linalg.lstsq(Z, yy, rcond=None)[0] # rcond=None suppresses warning message
+# features corresponding to elements in yy at the previous time step
+Z = X[:len(yy)]
+# rcond=None suppresses warning message
+linreg_coefs = np.linalg.lstsq(Z, yy, rcond=None)[0]
 linreg_pred = Z @ linreg_coefs
 np.corrcoef(linreg_pred, yy)
 
 # The correlation of the RNN predicted values is substantially higher! But it also has
-# many more parameters, and so is more flexible. 
+# many more parameters, and so is more flexible.
 
 # To visualize the difference in performance we plot the true values and predicted values
-import matplotlib.pyplot as plt
 
 plt.plot(yy)
 plt.plot(pred)
 plt.plot(linreg_pred)
-plt.legend(['Truth','RNN','LinReg'])
-
-
+plt.legend(['Truth', 'RNN', 'LinReg'])

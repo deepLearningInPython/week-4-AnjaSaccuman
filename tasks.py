@@ -97,12 +97,16 @@ print(word_frequencies)
 # Your code here:
 # -----------------------------------------------
 def token_counts(string: str, k: int = 1) -> dict:
-    tokens = string.lower().split()
-    freq_dict = {word: tokens.count(word) for word in set(tokens) if tokens.count(word) >= k}
-    return freq_dict
+    tokens = tokenize(string)
+    token_set = set(tokens)
+    word_frequencies = {word: tokens.count(word) for word in token_set if
+                        tokens.count(word) >= k}
+    return word_frequencies
+
 
 # test:
-text_hist = {'the': 2, 'quick': 1, 'brown': 1, 'fox': 1, 'jumps': 1, 'over': 1, 'lazy': 1, 'dog': 1}
+text_hist = {'the': 2, 'quick': 1, 'brown': 1, 'fox': 1,
+             'jumps': 1, 'over': 1, 'lazy': 1, 'dog': 1}
 all(text_hist[key] == value for key, value in token_counts(text).items())
 # -----------------------------------------------
 
@@ -164,11 +168,13 @@ assert all(id_to_token[token_to_id[key]]==key for key in token_to_id) and all(to
 # Your code here:
 # -----------------------------------------------
 def make_vocabulary_map(documents: list) -> tuple:
-    all_tokens = set()  
-    for doc in documents:
-        all_tokens.update(tokenize(doc))  
-    token2int = {token: idx for idx, token in enumerate(sorted(all_tokens))}
-    int2token = {idx: token for token, idx in token2int.items()}
+    vocab = set()
+    for document in documents:
+        vocab = vocab.union(tokenize(document))
+    token2int = {token: id for id, token in enumerate(vocab)}
+    int2token = {id: token for token, id in token2int.items()}
+    return token2int, int2token
+
     
     return token2int, int2token
 
@@ -189,16 +195,14 @@ all(i2t[t2i[tok]] == tok for tok in t2i) # should be True
 
 # Your code here:
 # -----------------------------------------------
-def tokenize_and_encode(documents: list, token_to_id: dict) -> tuple:
-    encoded_documents = []
-    
-    for doc in documents:
-        tokens = tokenize(doc)
-        encoded_doc = [token_to_id.get(token) for token in tokens]
-        encoded_documents.append(encoded_doc)
-    
-    id_to_token = {idx: token for token, idx in token_to_id.items()}  
-    return encoded_documents, token_to_id, id_to_token
+def tokenize_and_encode(documents: list) -> list:
+
+    # Hint: use your make_vocabulary_map and tokenize function
+    t2i, i2t = make_vocabulary_map(documents)
+    enc = []
+    for document in documents:
+        enc.append([t2i[word] for word in tokenize(document)])
+    return enc, t2i, i2t
 
 # Test:
 enc, t2i, i2t = tokenize_and_encode([text, 'What a luck we had today!'])
